@@ -1,4 +1,4 @@
-Installing Zabbix and MariDB-Galera Cluster inside PVE Centos 7 containers (LXC) 
+Installing MariDB-Galera Cluster inside PVE Centos 7 containers (LXC) 
 ===
 
 UPD:
@@ -34,14 +34,7 @@ Don't forget to type your values in inventory `[galera_cluster:vars]`
 * Allowing remote root for `ssh`
 * Adding additional repo
 
-2. Installing Zabbix-server
----
-* Adding Zabbix repo
-* Installing:
-    + `zabbix-server-mysql`
-    + `zabbix-web-mysql`
-
-3. Installing MariaDB-Galera cluster
+2. Installing MariaDB-Galera cluster
 ---
 
 * Adding MariaDB repo
@@ -52,12 +45,12 @@ Don't forget to type your values in inventory `[galera_cluster:vars]`
     + `galera`
     + `MySQL-python`
 
-4. Initial setting
+3. Initial setting
 ---
 
 * Analog ```mysql_secure_installation```
 
-5. Configuring MariaDB-Galera cluster
+4. Configuring MariaDB-Galera cluster
 ---
 
 * Creating & adding credintials to ~/.my.cnf (for using root password to ansible)
