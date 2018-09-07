@@ -1,0 +1,122 @@
+#!/usr/bin/ansible-playbook
+---
+
+- name: After fresh install setup
+  hosts: galera_cluster
+  gather_facts: yes
+  tasks:
+
+    - name: Update & upgrade yum
+      yum:
+        name: '*'
+        state: latest
+
+    - name: Install some utils
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - nano
+        - bash-completion
+        - mc
+        - yum-utils
+
+    - name: Add additional repo
+      shell: yum-config-manager --enable rhel-7-server-optional-rpms
+
+    - name: Add MariaDB repo
+      yum_repository:
+        name: MariaDB
+        description: MariaDB repo
+        baseurl: http://yum.mariadb.org/10.2/centos7-amd64
+        gpgcheck: yes
+        gpgkey: https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+
+    - name: Install packages
+      yum: 
+        name: "{{ packages }}"
+      vars: 
+        packages:
+        - MariaDB-server
+        - MariaDB-client
+        - rsync
+        - galera
+        - MySQL-python
+
+    - name: Start & enable service
+      service: 
+        name: mariadb.service
+        state: started
+        enabled: yes
+
+    - name: delete anonymous MySQL server user for {{ ansible_hostname }}
+      action: mysql_user user="" host="{{ ansible_hostname }}" state="absent"
+
+    - name: delete anonymous MySQL server user for localhost
+      action: mysql_user user="" state="absent"
+
+    - name: remove the MySQL test database
+      action: mysql_db db=test state=absent
+
+    - name: Change root user password on first run
+      mysql_user: login_user=root
+                  login_password=''
+                  name=root
+                  password={{ mysql_root_password }}
+                  priv=*.*:ALL,GRANT
+                  host={{ item }}
+      with_items:
+        - "{{ ansible_hostname }}"
+        - 127.0.0.1
+        - ::1
+        - localhost
+
+    - name: create & add credintials to ~/.my.cnf
+      lineinfile:
+        path: /root/.my.cnf
+        create: yes
+        line: "{{ item }}"
+      with_items:
+        - "[client]"
+        - "user=root"
+        - "password=\"{{ mysql_root_password }}\""
+
+    - name: add user for replication
+      mysql_user:
+        name: "{{ repl_user }}"
+        password: "{{ repl_password }}"
+        priv: '*.*:ALL'
+        state: present
+
+    - name: stopping service
+      service: 
+        name: mariadb.service
+        state: stopped
+
+    - name: editing conf
+      lineinfile:
+        path: /etc/my.cnf.d/server.cnf
+        regexp: "^#?{{ item.split('=')[0] }}="
+        line: "{{ item }}"
+      with_items:
+        - "bind-address=0.0.0.0"
+        - "collation-server = utf8_general_ci"
+        - "init-connect = 'SET NAMES utf8'"
+        - "character-set-server = utf8"
+        - "wsrep_on=ONwsrep_on=ON"
+        - "binlog_format=ROW"
+        - "innodb_autoinc_lock_mode=2"
+        - "innodb_locks_unsafe_for_binlog=1"
+        - "query_cache_size=0"
+        - "query_cache_type=0"
+        - "default_storage_engine=InnoDB"
+        - "innodb_log_file_size=100M"
+        - "innodb_file_per_table"
+        - "innodb_flush_log_at_trx_commit=2"
+        - "wsrep_provider=/usr/lib64/galera/libgalera_smm.so"
+        - "wsrep_cluster_address=\"gcomm://\"{{ wsrep_cluster_address }}\"\""
+        - "wsrep_cluster_name='galera_cluster'"
+        - "wsrep_node_address='{{ ansible_default_ipv4.address }}'"
+        - "wsrep_node_name='{{ ansible_hostname }}'"
+        - "wsrep_sst_method=rsync"
+        - "wsrep_sst_auth={{ repl_user }}:{{ repl_password }}"
