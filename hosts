@@ -1,6 +1,3 @@
-[zabbix-server]
-zabbix
-
 [galera_cluster]
 mdb-0[1:3]
 
@@ -11,5 +8,4 @@ repl_password=
 wsrep_cluster_address=
 
 [hosts:children]
-zabbix-server
 galera_cluster
