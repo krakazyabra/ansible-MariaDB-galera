@@ -1,0 +1,15 @@
+[zabbix-server]
+zabbix
+
+[galera_cluster]
+mdb-0[1:3]
+
+[galera_cluster:vars]
+mysql_root_password=
+repl_user=
+repl_password=
+wsrep_cluster_address=
+
+[hosts:children]
+zabbix-server
+galera_cluster
